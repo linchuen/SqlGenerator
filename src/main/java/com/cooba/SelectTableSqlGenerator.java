@@ -17,10 +17,7 @@ public class SelectTableSqlGenerator {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("SELECT ");
 
-        Field[] fields = clazz.getDeclaredFields();
-        List<Field> validFields = Arrays.stream(fields)
-                .filter(field -> !Modifier.isFinal(field.getModifiers()) && !Modifier.isStatic(field.getModifiers()))
-                .collect(Collectors.toList());
+        List<Field> validFields = Common.getValidFields(clazz);
 
         String column = validFields.stream()
                 .map(field -> Common.camelToSnake(field.getName()))
@@ -32,13 +29,8 @@ public class SelectTableSqlGenerator {
         String tableName = Common.camelToSnake(name);
         stringBuilder.append(tableName).append("\n");
 
-        stringBuilder.append("WHERE \n");
-        String value = validFields.stream().map(field -> {
-            String fieldName = field.getName();
-            String columnName = Common.camelToSnake(fieldName);
-            return columnName + " = ${" + fieldName + "}";
-        }).collect(Collectors.joining(",\n"));
-        stringBuilder.append(value);
+        String condition = Common.getWhereBlock(clazz);
+        stringBuilder.append(condition);
         System.out.println(stringBuilder);
     }
 

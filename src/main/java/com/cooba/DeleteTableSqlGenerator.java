@@ -21,19 +21,14 @@ public class DeleteTableSqlGenerator {
         String tableName = Common.camelToSnake(name);
         stringBuilder.append(tableName).append("\n");
 
-        Field[] fields = clazz.getDeclaredFields();
-        List<Field> validFields = Arrays.stream(fields)
-                .filter(field -> !Modifier.isFinal(field.getModifiers()) && !Modifier.isStatic(field.getModifiers()))
-                .collect(Collectors.toList());
-
-        stringBuilder.append("WHERE \n");
-        String value = validFields.stream().map(field -> {
-            String fieldName = field.getName();
-            String columnName = Common.camelToSnake(fieldName);
-            return columnName + " = ${" + fieldName + "}";
-        }).collect(Collectors.joining(",\n", "", "\n"));
-        stringBuilder.append(value);
+        String condition = Common.getWhereBlock(clazz);
+        stringBuilder.append(condition);
 
         System.out.println(stringBuilder);
     }
+
+    public static void main(String[] args) {
+        generateSql(TestEntity.class);
+    }
+
 }

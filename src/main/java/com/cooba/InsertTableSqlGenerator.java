@@ -18,25 +18,26 @@ public class InsertTableSqlGenerator {
         stringBuilder.append("INSERT INTO ");
 
         String name = clazz.getSimpleName().replace(tableSuffix, "");
-        stringBuilder.append(Common.camelToSnake(name));
+        String tableName = Common.camelToSnake(name);
+        stringBuilder.append(tableName).append("\n");
 
-        Field[] fields = clazz.getDeclaredFields();
-        List<Field> validFields = Arrays.stream(fields)
-                .filter(field -> !Modifier.isFinal(field.getModifiers()) && !Modifier.isStatic(field.getModifiers()))
-                .collect(Collectors.toList());
+        List<Field> validFields = Common.getValidFields(clazz);
 
         String column = validFields.stream()
                 .map(field -> Common.camelToSnake(field.getName()))
-                .collect(Collectors.joining(",", "\n(", ")\n"));
+                .collect(Collectors.joining(",", "(", ")\n"));
         stringBuilder.append(column);
 
         stringBuilder.append("VALUES");
         String value = validFields.stream().map(field -> {
             String fieldName = field.getName();
-            String columnName = Common.camelToSnake(fieldName);
-            return columnName + " = ${" + fieldName + "}";
+            return "#{" + fieldName + "}";
         }).collect(Collectors.joining(",\n", "\n(\n", "\n)\n"));
         stringBuilder.append(value);
         System.out.println(stringBuilder);
+    }
+
+    public static void main(String[] args) {
+        generateSql(TestEntity.class);
     }
 }
