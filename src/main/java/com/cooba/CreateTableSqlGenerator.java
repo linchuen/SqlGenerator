@@ -1,11 +1,9 @@
 package com.cooba;
 
 
-import com.cooba.annotation.Comment;
+import lombok.Builder;
+import lombok.Data;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public class CreateTableSqlGenerator {
@@ -16,72 +14,79 @@ public class CreateTableSqlGenerator {
 
     public static void generateSql(String tableSuffix, Class<?> clazz) {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("CREATE TABLE `");
+        stringBuilder.append("CREATE TABLE ");
 
-        String name = clazz.getSimpleName().replace(tableSuffix, "");
-        stringBuilder.append(Common.camelToSnake(name));
+        String tableName = Common.getTableName(tableSuffix, clazz);
+        stringBuilder.append("`");
+        stringBuilder.append(tableName);
         stringBuilder.append("` (\n");
 
-        Field[] fields = clazz.getDeclaredFields();
-        String column = Arrays.stream(fields).map(field -> {
-            int modifiers = field.getModifiers();
-            if (Modifier.isFinal(modifiers) || Modifier.isStatic(modifiers)) return "";
+        String columnBlock = getColumnBlock(clazz);
+        stringBuilder.append(columnBlock);
 
-            String snake = "`" + Common.camelToSnake(field.getName()) + "`";
-            String javaType = field.getType().getName();
-            boolean isPk = snake.equals("`id`");
-            String columnInfo = createColumn(javaType, isPk);
-
-            Comment comment = field.getAnnotation(Comment.class);
-            if (comment != null) {
-                String description = comment.description();
-                return snake + " " + columnInfo + " " + "COMMENT '" + description + "',\n";
-            }
-            return snake + " " + columnInfo + ",\n";
-        }).collect(Collectors.joining());
-        stringBuilder.append(column);
-
-        stringBuilder.append("PRIMARY KEY (`id`)");
-        String uniqueKeyName = getUniqueKeyName(fields);
-        if (!uniqueKeyName.isBlank()) {
-            stringBuilder.append(",\n UNIQUE KEY `uk` (").append(uniqueKeyName).append(")");
-        }
+        stringBuilder.append("\nPRIMARY KEY (`id`)");
         stringBuilder.append("\n);\n");
 
         System.out.println(stringBuilder);
     }
 
-    private static String createColumn(String javaType, boolean isPk) {
-        switch (javaType) {
+    private static String createColumn(Column column) {
+        int length = column.length == null ? 50 : column.length;
+        int precision = column.precision == null ? 28 : column.precision;
+        int scale = column.scale == null ? 16 : column.scale;
+
+        switch (column.getJavaType()) {
             case "java.lang.Long":
-                return isPk ? "bigint(20) NOT NULL AUTO_INCREMENT" : "bigint(20) DEFAULT NULL";
+                return column.isPrimaryKey()
+                        ? column.name + " bigint NOT NULL AUTO_INCREMENT"
+                        : column.name + " bigint DEFAULT NULL";
             case "long":
-                return "bigint(20) NOT NULL";
+                return column.name + " bigint NOT NULL";
             case "java.lang.Integer":
-                return "int(11) DEFAULT NULL";
+                return column.name + " int DEFAULT NULL";
             case "int":
-                return "int(11) NOT NULL";
+                return column.name + " int NOT NULL";
             case "java.math.BigDecimal":
-                return "decimal(28,16) DEFAULT NULL";
+                return column.name + " decimal(" + precision + "," + scale + ") DEFAULT NULL";
             case "java.lang.Boolean":
-                return "tinyint(1) DEFAULT NULL";
+                return column.name + " tinyint DEFAULT NULL";
             case "boolean":
-                return "tinyint(1) DEFAULT '0'";
+                return column.name + " tinyint DEFAULT '0'";
             case "java.lang.String":
-                return "varchar(50) DEFAULT NULL";
+                return column.name + " varchar(" + length + ") DEFAULT NULL";
             case "java.util.Date":
             case "java.time.LocalDateTime":
-                return "datetime DEFAULT NULL";
+                return column.name + " datetime DEFAULT NULL";
             default:
                 return "";
         }
     }
 
-    private static String getUniqueKeyName(Field[] fields) {
-        return Arrays.stream(fields)
-                .filter(field -> field.getAnnotation(Comment.class) != null)
-                .filter(field -> field.getAnnotation(Comment.class).isUniqueKey())
-                .map(field -> "`" + Common.camelToSnake(field.getName()) + "`")
-                .collect(Collectors.joining(","));
+    private static String getColumnBlock(Class<?> clazz) {
+        return Common.getValidFields(clazz).stream().map(field -> {
+            String fieldName = "`" + Common.camelToSnake(field.getName()) + "`";
+            Column column = Column.builder()
+                    .name(fieldName)
+                    .javaType(field.getType().getName())
+                    .isPrimaryKey(fieldName.equals("`id`"))
+                    .build();
+            return createColumn(column);
+        }).collect(Collectors.joining(",\n"));
     }
+
+    @Data
+    @Builder
+    private static class Column {
+        private String name;
+        private String javaType;
+        private boolean isPrimaryKey;
+        private Integer length;
+        private Integer precision;
+        private Integer scale;
+    }
+
+    public static void main(String[] args) {
+        generateSql(TestEntity.class);
+    }
+
 }
