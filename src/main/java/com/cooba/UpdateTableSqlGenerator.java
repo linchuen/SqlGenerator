@@ -13,24 +13,27 @@ public class UpdateTableSqlGenerator {
 
     public static void generateSql(String tableSuffix, Class<?> clazz) {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("UPDATE ");
 
-        String name = clazz.getSimpleName().replace(tableSuffix, "");
-        String tableName = Common.camelToSnake(name);
+        stringBuilder.append("UPDATE ");
+        String tableName = Common.getTableName(tableSuffix, clazz);
         stringBuilder.append(tableName).append("\n");
 
-        List<Field> validFields = Common.getValidFields(clazz);
+        String setBlock = getSetBlock(clazz);
+        stringBuilder.append(setBlock);
 
-        String value = validFields.stream().map(field -> {
+        String whereBlock = Common.getWhereBlock(clazz);
+        stringBuilder.append(whereBlock);
+
+        System.out.println(stringBuilder);
+    }
+
+    private static String getSetBlock(Class<?> clazz) {
+        List<Field> validFields = Common.getValidFields(clazz);
+        return validFields.stream().map(field -> {
             String fieldName = field.getName();
             String columnName = Common.camelToSnake(fieldName);
             return columnName + " = #{" + fieldName + "}";
         }).collect(Collectors.joining(",\n", "SET\n", "\n"));
-        stringBuilder.append(value);
-
-        String condition = Common.getWhereBlock(clazz);
-        stringBuilder.append(condition);
-        System.out.println(stringBuilder);
     }
 
     public static void main(String[] args) {

@@ -33,6 +33,11 @@ public class Common {
         return resultString;
     }
 
+    public static String getTableName(String tableSuffix, Class<?> clazz) {
+        String name = clazz.getSimpleName().replace(tableSuffix, "");
+        return Common.camelToSnake(name);
+    }
+
     public static List<Field> getValidFields(Class<?> clazz) {
         Field[] fields = clazz.getDeclaredFields();
         return Arrays.stream(fields)

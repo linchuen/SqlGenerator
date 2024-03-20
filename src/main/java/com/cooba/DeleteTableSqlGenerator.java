@@ -1,12 +1,6 @@
 package com.cooba;
 
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
 public class DeleteTableSqlGenerator {
 
     public static void generateSql(Class<?> clazz) {
@@ -15,10 +9,9 @@ public class DeleteTableSqlGenerator {
 
     public static void generateSql(String tableSuffix, Class<?> clazz) {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("DELETE FROM ");
 
-        String name = clazz.getSimpleName().replace(tableSuffix, "");
-        String tableName = Common.camelToSnake(name);
+        stringBuilder.append("DELETE FROM ");
+        String tableName = Common.getTableName(tableSuffix, clazz);
         stringBuilder.append(tableName).append("\n");
 
         String condition = Common.getWhereBlock(clazz);
